@@ -6,6 +6,7 @@ from urllib.parse import urlparse
 
 from fastapi import FastAPI, Form, HTTPException
 from fastapi.responses import HTMLResponse, FileResponse
+from starlette.background import BackgroundTask
 import yt_dlp
 
 
@@ -73,7 +74,12 @@ def download(url: str = Form(...), format: str = Form("mp4"), rights: str = Form
             raise RuntimeError("No se generó ningún archivo.")
         result = max(files, key=lambda item: item.stat().st_size)
         media_type = "audio/mpeg" if format == "mp3" else "video/mp4"
-        return FileResponse(result, media_type=media_type, filename=result.name, background=lambda: shutil.rmtree(workdir, ignore_errors=True))
+        return FileResponse(
+            result,
+            media_type=media_type,
+            filename=result.name,
+            background=BackgroundTask(shutil.rmtree, workdir, ignore_errors=True),
+        )
     except HTTPException:
         shutil.rmtree(workdir, ignore_errors=True)
         raise
